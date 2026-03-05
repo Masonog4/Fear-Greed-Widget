@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fear & Greed Index</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: transparent;
+    --panel: transparent;
+    --border: #1e2235;
+    --text: #ffffff;
+    --muted: rgba(255,255,255,0.6);
+    --accent: #00ff88;
+    --green: #00ff88;
+    --red: #ff3c5f;
+    --yellow: #ffd24d;
+    --orange: #ff8c42;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .widget {
+    width: 100vmin;
+    height: 100vmin;
+    max-width: 440px;
+    max-height: 440px;
+    background: var(--panel);
+    border: none;
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* scan line effect */
+  .widget::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,255,136,0.015) 2px,
+      rgba(0,255,136,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,255,136,0.03);
+    flex-shrink: 0;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .header-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .source-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  .main {
+    padding: 12px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Gauge */
+  .gauge-wrap {
+    position: relative;
+    width: 230px;
+    height: 120px;
+  }
+
+  .gauge-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .gauge-label-value {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .gauge-number {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 42px;
+    line-height: 1;
+    font-weight: 400;
+    letter-spacing: -2px;
+    transition: color 0.6s ease;
+  }
+
+  .gauge-sentiment {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-top: 2px;
+    transition: color 0.6s ease;
+  }
+
+  /* Metrics grid */
+  .metrics {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    min-height: 0;
+  }
+
+  .metric-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 7px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+
+  .metric-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .metric-value {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    transition: color 0.6s;
+  }
+
+  .metric-sub {
+    font-size: 9px;
+    color: var(--muted);
+    font-weight: 400;
+    margin-top: 2px;
+    font-family: 'Share Tech Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bar row */
+  .bar-row {
+    width: 100%;
+  }
+
+  .bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .bar-track {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: visible;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1), background 0.6s;
+    position: relative;
+  }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: inherit;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 6px 14px;
+    flex-shrink: 0;
+    gap: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .update-info {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .countdown {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    opacity: 0.7;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Loading / error */
+  .state-msg {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 40px 20px;
+    animation: blink 1.4s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .error-msg {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 1px;
+    text-align: center;
+    padding: 30px 20px;
+    line-height: 1.8;
+  }
+
+  .error-msg a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .hidden { display: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeIn 0.5s ease forwards; }
+</style>
+</head>
+<body>
+
+<div class="widget">
+  <div class="header">
+    <div class="header-left">
+      <div class="pulse-dot" id="dot"></div>
+      <span class="header-title">Fear &amp; Greed Index</span>
+    </div>
+    <span class="source-badge">CNN · Markets</span>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading" class="state-msg">FETCHING DATA...</div>
+
+  <!-- Error -->
+  <div id="error" class="error-msg hidden">
+    ⚠ CORS BLOCKED<br><br>
+    CNN's API cannot be fetched directly from a browser.<br><br>
+    <strong>→ Embed via a proxy or use the link below:</strong><br><br>
+    <a href="https://edition.cnn.com/markets/fear-and-greed" target="_blank">edition.cnn.com/markets/fear-and-greed ↗</a><br><br>
+    <span style="font-size:9px;color:var(--muted)">See setup instructions below the widget.</span>
+  </div>
+
+  <!-- Content -->
+  <div id="content" class="hidden fade-in">
+    <div class="main">
+
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" viewBox="0 0 260 140">
+          <defs>
+            <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stop-color="#ff3c5f"/>
+              <stop offset="25%"  stop-color="#ff8c42"/>
+              <stop offset="50%"  stop-color="#ffd24d"/>
+              <stop offset="75%"  stop-color="#a8e063"/>
+              <stop offset="100%" stop-color="#00ff88"/>
+            </linearGradient>
+            <linearGradient id="needleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0.2)"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Track -->
+          <path id="arcTrack"
+            d="M 20,130 A 110,110 0 0,1 240,130"
+            fill="none" stroke="#1e2235" stroke-width="12"
+            stroke-linecap="round"/>
+
+          <!-- Colored arc -->
+          <path id="arcFill"
+            d="M 20,130 A 110,110 0 0,1 240,130"
+            fill="none"
+            stroke="url(#arcGrad)"
+            stroke-width="12"
+            stroke-linecap="round"
+            stroke-dasharray="0 346"
+            stroke-dashoffset="0"
+            style="transition: stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1);"/>
+
+          <!-- Tick marks -->
+          <g id="ticks" opacity="0.35"></g>
+
+          <!-- Needle -->
+          <g id="needle" transform="rotate(-90, 130, 130)" style="transition: transform 1.2s cubic-bezier(0.4,0,0.2,1);">
+            <line x1="130" y1="130" x2="130" y2="32"
+              stroke="url(#needleGrad)" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="130" cy="130" r="6" fill="#ffffff" opacity="0.9"/>
+            <circle cx="130" cy="130" r="3" fill="var(--bg)"/>
+          </g>
+        </svg>
+
+        <div class="gauge-label-value">
+          <div class="gauge-number" id="scoreNum">--</div>
+          <div class="gauge-sentiment" id="sentimentLabel">LOADING</div>
+        </div>
+      </div>
+
+      <!-- Bar -->
+      <div class="bar-row">
+        <div class="bar-labels">
+          <span>EXTREME FEAR</span>
+          <span>EXTREME GREED</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="barFill" style="width:0%;background:var(--muted)"></div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="metric-label">NOW</div>
+          <div class="metric-value" id="mNow">--</div>
+          <div class="metric-sub" id="mNowLabel">current</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">YESTERDAY</div>
+          <div class="metric-value" id="mYest">--</div>
+          <div class="metric-sub" id="mYestLabel">prev. close</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">1 WEEK AGO</div>
+          <div class="metric-value" id="mWeek">--</div>
+          <div class="metric-sub" id="mWeekLabel">7d back</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">1 MONTH AGO</div>
+          <div class="metric-value" id="mMonth">--</div>
+          <div class="metric-sub" id="mMonthLabel">30d back</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="footer">
+      <span class="update-info" id="updateTime">LAST UPDATED: --</span>
+      <span class="countdown" id="countdown">REFRESH IN 5:00</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Config ───────────────────────────────────────────────────
+const REFRESH_MS   = 5 * 60 * 1000; // 5 minutes
+const ARC_LEN      = 346;           // approximate arc path length in SVG units
+const PROXY_URL    = 'https://corsproxy.io/?url=https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
+// fallback static demo when all sources fail
+const DEMO = {
+  score: 42, rating: 'Fear',
+  previous_close: 38, previous_1_week: 55, previous_1_month: 67
+};
+
+// ─── Sentiment → color ────────────────────────────────────────
+function sentimentColor(score) {
+  if (score <= 25)  return 'var(--red)';
+  if (score <= 45)  return 'var(--orange)';
+  if (score <= 55)  return 'var(--yellow)';
+  if (score <= 75)  return '#a8e063';
+  return 'var(--green)';
+}
+
+function ratingFromScore(s) {
+  if (s <= 25)  return 'Extreme Fear';
+  if (s <= 45)  return 'Fear';
+  if (s <= 55)  return 'Neutral';
+  if (s <= 75)  return 'Greed';
+  return 'Extreme Greed';
+}
+
+// ─── Gauge needle ─────────────────────────────────────────────
+function setNeedle(score) {
+  // score 0–100 maps to -180deg … 0deg rotation (left arc → right)
+  const deg = -180 + (score / 100) * 180;
+  document.getElementById('needle').style.transform =
+    `rotate(${deg}deg, 130, 130) rotate(${deg}, 130, 130)`;
+  // SVG transform
+  document.getElementById('needle').setAttribute(
+    'transform', `rotate(${-180 + (score/100)*180}, 130, 130)`);
+}
+
+function setArc(score) {
+  const fill = (score / 100) * ARC_LEN;
+  document.getElementById('arcFill').setAttribute(
+    'stroke-dasharray', `${fill} ${ARC_LEN - fill}`);
+}
+
+// ─── Draw ticks ───────────────────────────────────────────────
+function drawTicks() {
+  const g = document.getElementById('ticks');
+  const cx = 130, cy = 130, r = 110;
+  for (let i = 0; i <= 10; i++) {
+    const angle = -180 + i * 18; // degrees
+    const rad = angle * Math.PI / 180;
+    const inner = i % 5 === 0 ? r - 18 : r - 10;
+    const x1 = cx + r * Math.cos(rad);
+    const y1 = cy + r * Math.sin(rad);
+    const x2 = cx + inner * Math.cos(rad);
+    const y2 = cy + inner * Math.sin(rad);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', '#4a5170');
+    line.setAttribute('stroke-width', i % 5 === 0 ? 1.5 : 1);
+    g.appendChild(line);
+  }
+}
+
+// ─── Render data ──────────────────────────────────────────────
+function render(data) {
+  const score   = Math.round(data.score);
+  const rating  = data.rating || ratingFromScore(score);
+  const color   = sentimentColor(score);
+
+  // Big number + label
+  document.getElementById('scoreNum').textContent = score;
+  document.getElementById('scoreNum').style.color = color;
+  document.getElementById('sentimentLabel').textContent = rating.toUpperCase();
+  document.getElementById('sentimentLabel').style.color = color;
+
+  // Gauge
+  setNeedle(score);
+  setArc(score);
+
+  // Bar
+  const bar = document.getElementById('barFill');
+  bar.style.width  = score + '%';
+  bar.style.background = color;
+
+  // Metrics
+  const pairs = [
+    ['mNow',   'mNowLabel',   score,                        rating],
+    ['mYest',  'mYestLabel',  data.previous_close,          ratingFromScore(data.previous_close)],
+    ['mWeek',  'mWeekLabel',  data.previous_1_week,         ratingFromScore(data.previous_1_week)],
+    ['mMonth', 'mMonthLabel', data.previous_1_month,        ratingFromScore(data.previous_1_month)],
+  ];
+  pairs.forEach(([valId, subId, val, lbl]) => {
+    const v = Math.round(val ?? 0);
+    document.getElementById(valId).textContent = v || '--';
+    document.getElementById(valId).style.color = sentimentColor(v);
+    document.getElementById(subId).textContent = lbl ?? '';
+  });
+
+  // Timestamp
+  const now = new Date();
+  document.getElementById('updateTime').textContent =
+    'LAST UPDATED: ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  // Show content
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('error').classList.add('hidden');
+  document.getElementById('content').classList.remove('hidden');
+}
+
+// ─── Fetch ────────────────────────────────────────────────────
+async function fetchData() {
+  const urls = [
+    PROXY_URL,
+    // secondary public CORS proxy attempt
+    `https://api.allorigins.win/get?url=${encodeURIComponent('https://production.dataviz.cnn.io/index/fearandgreed/graphdata')}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const res  = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      let raw = await res.json();
+
+      // allorigins wraps content in { contents: "..." }
+      if (raw.contents) raw = JSON.parse(raw.contents);
+
+      // CNN structure: { fear_and_greed: { score, rating, previous_close, ... } }
+      const fg = raw.fear_and_greed ?? raw;
+      if (!fg.score) continue;
+
+      render({
+        score:            fg.score,
+        rating:           fg.rating,
+        previous_close:   fg.previous_close,
+        previous_1_week:  fg.previous_1_week,
+        previous_1_month: fg.previous_1_month,
+      });
+      return; // success
+    } catch (e) {
+      console.warn('Fetch attempt failed:', e);
+    }
+  }
+
+  // All failed — show demo data with error notice
+  render(DEMO);
+  // Optionally show a soft notice (not blocking)
+  document.getElementById('updateTime').textContent = '⚠ DEMO DATA · CORS BLOCKED';
+}
+
+// ─── Countdown timer ──────────────────────────────────────────
+let nextRefresh = Date.now() + REFRESH_MS;
+
+function updateCountdown() {
+  const left = Math.max(0, nextRefresh - Date.now());
+  const m = String(Math.floor(left / 60000)).padStart(1,'0');
+  const s = String(Math.floor((left % 60000) / 1000)).padStart(2,'0');
+  document.getElementById('countdown').textContent = `REFRESH IN ${m}:${s}`;
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+drawTicks();
+fetchData();
+
+setInterval(() => {
+  nextRefresh = Date.now() + REFRESH_MS;
+  fetchData();
+}, REFRESH_MS);
+
+setInterval(updateCountdown, 1000);
+</script>
+</body>
+</html>
